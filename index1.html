@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>茄萣國中 114-1 段考時程表</title>
+
+<style>
+  body{
+    font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;
+    background:#0f1115;
+    color:#ffffff;
+    margin:0;
+    padding:24px;
+  }
+  .wrap{
+    max-width:1200px;
+    margin:0 auto;
+    text-align:center;
+  }
+
+  /* ===== 標題 ===== */
+  h1{ font-size:48px; margin:0 0 6px; }
+  h2{ font-size:34px; margin:0 0 20px; }
+
+  /* ===== 即時時鐘 ===== */
+  .clock{
+    position:fixed;
+    top:20px;
+    right:30px;
+    font-size:48px;
+    font-weight:900;
+    letter-spacing:2px;
+    color:#ffd54f;
+  }
+
+  /* ===== 分頁 ===== */
+  .tabs{
+    display:flex;
+    justify-content:center;
+    gap:24px;
+    margin-bottom:24px;
+  }
+  .tab{
+    font-size:28px;
+    padding:14px 28px;
+    border:3px solid #ffffff;
+    border-radius:999px;
+    cursor:pointer;
+    opacity:.85;
+  }
+  .tab.active{
+    background:#ffffff;
+    color:#000;
+    opacity:1;
+  }
+
+  /* ===== 倒數卡片 ===== */
+  .item{
+    border:4px solid #ffffff;
+    border-radius:20px;
+    padding:26px 32px;
+    margin-bottom:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .left{ text-align:left; }
+  .subject{
+    font-size:52px;
+    font-weight:900;
+  }
+  .period{
+    font-size:26px;
+    margin-top:6px;
+    color:#ffd54f;
+  }
+
+  /* ⏱ 倒數時間（B 版：28px，不壓迫） */
+  .time{
+    font-size:28px;
+    font-weight:900;
+    letter-spacing:1px;
+  }
+
+  /* ===== 15 分鐘內提醒 ===== */
+  .urgent{
+    border-color:#ff5252;
+  }
+  .urgent .subject,
+  .urgent .time{
+    color:#ff5252;
+  }
+
+  /* ===== 固定提醒 ===== */
+  .remind{
+    margin-top:36px;
+    border-top:3px dashed #666;
+    padding-top:20px;
+    font-size:32px;
+    text-align:left;
+  }
+  .remind div{ margin:10px 0; }
+
+  /* ===== 5 分鐘超大提醒 ===== */
+  .alert{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.9);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    text-align:center;
+  }
+  .alert.show{ display:flex; }
+  .alert-box{
+    border:6px solid #ff5252;
+    border-radius:30px;
+    padding:60px;
+    max-width:900px;
+  }
+  .alert-title{
+    font-size:72px;
+    font-weight:900;
+    color:#ff5252;
+    margin-bottom:20px;
+  }
+  .alert-subject{
+    font-size:64px;
+    margin-bottom:12px;
+  }
+  .alert-period{
+    font-size:40px;
+    color:#ffd54f;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ⏰ 即時時鐘 -->
+<div class="clock" id="clock">--:--:--</div>
+
+<div class="wrap">
+  <h1>茄萣國中 114-1 段考時程表</h1>
+  <h2 id="title">1/15（四）段考倒數</h2>
+
+  <div class="tabs">
+    <div class="tab active" data-day="day1">1/15（四）</div>
+    <div class="tab" data-day="day2">1/16（五）</div>
+  </div>
+
+  <div id="list"></div>
+
+  <!-- 固定考前提醒 -->
+  <div class="remind">
+    <div>📝 考前備齊並檢查文具</div>
+    <div>📏 遵守試場規則</div>
+  </div>
+</div>
+
+<!-- 🔔 5 分鐘超大提醒 -->
+<div class="alert" id="alert">
+  <div class="alert-box">
+    <div class="alert-title">⚠️ 即將考試 ⚠️</div>
+    <div class="alert-subject" id="alertSubject"></div>
+    <div class="alert-period" id="alertPeriod"></div>
+  </div>
+</div>
+
+<script>
+/* ===== 即時時鐘 ===== */
+function updateClock(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,"0");
+  const m = String(now.getMinutes()).padStart(2,"0");
+  const s = String(now.getSeconds()).padStart(2,"0");
+  document.getElementById("clock").textContent = `${h}:${m}:${s}`;
+}
+updateClock();
+setInterval(updateClock,1000);
+
+/* ===== 段考倒數設定 ===== */
+const URGENT = 15*60*1000;   // 15 分鐘提醒
+const ALERT5 = 5*60*1000;    // 5 分鐘超大提醒
+
+/* 第一日 */
+const day1 = [
+  { s:"作文", start:"08:20", end:"09:05", t:"2026-01-15T08:20:00+08:00" },
+  { s:"自然", start:"09:15", end:"10:00", t:"2026-01-15T09:15:00+08:00" },
+  { s:"英語", start:"11:05", end:"11:50", t:"2026-01-15T11:05:00+08:00" },
+  { s:"國文", start:"14:15", end:"15:00", t:"2026-01-15T14:15:00+08:00" },
+  { s:"英聽", start:"15:15", end:"16:00", t:"2026-01-15T15:15:00+08:00" }
+];
+
+/* 第二日 */
+const day2 = [
+  { s:"數學", start:"08:40", end:"10:00", t:"2026-01-16T08:40:00+08:00" },
+  { s:"社會", start:"11:05", end:"11:50", t:"2026-01-16T11:05:00+08:00" },
+  { s:"健康教育", start:"13:20", end:"14:05", t:"2026-01-16T13:20:00+08:00" }
+];
+
+const schedules = { day1, day2 };
+let current = "day1";
+const shownAlert = new Set();
+
+const list = document.getElementById("list");
+const title = document.getElementById("title");
+const alertBox = document.getElementById("alert");
+
+function pad(n){ return String(n).padStart(2,"0"); }
+function fmt(ms){
+  const s=Math.floor(ms/1000);
+  const d=Math.floor(s/86400);
+  const h=Math.floor(s%86400/3600);
+  const m=Math.floor(s%3600/60);
+  const sec=s%60;
+  return `${d}天 ${pad(h)}:${pad(m)}:${pad(sec)}`;
+}
+
+/* ===== 主渲染 ===== */
+function render(){
+  const now=Date.now();
+  list.innerHTML="";
+
+  const items=schedules[current]
+    .map(i=>({...i,ms:new Date(i.t)-now}))
+    .filter(i=>i.ms>0)
+    .sort((a,b)=>a.ms-b.ms); // 下一科自動置頂
+
+  if(items.length===0){
+    list.innerHTML=`<div style="font-size:40px;margin-top:60px;">今天考試已全部開始／結束</div>`;
+    return;
+  }
+
+  items.forEach(i=>{
+    // 🔔 5 分鐘超大提醒（每科只出現一次）
+    if(i.ms<=ALERT5 && !shownAlert.has(i.s)){
+      shownAlert.add(i.s);
+      document.getElementById("alertSubject").textContent=i.s;
+      document.getElementById("alertPeriod").textContent=`考試時段：${i.start}－${i.end}`;
+      alertBox.classList.add("show");
+      setTimeout(()=>alertBox.classList.remove("show"),8000);
+    }
+
+    const div=document.createElement("div");
+    div.className="item"+(i.ms<=URGENT?" urgent":"");
+    div.innerHTML=`
+      <div class="left">
+        <div class="subject">${i.ms<=URGENT?"⚠️ ":""}${i.s}</div>
+        <div class="period">考試時段：${i.start}－${i.end}</div>
+      </div>
+      <div class="time">${fmt(i.ms)}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+render();
+setInterval(render,1000);
+
+/* ===== 分頁切換 ===== */
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    tab.classList.add("active");
+    current=tab.dataset.day;
+    title.textContent=tab.textContent+" 段考倒數";
+    render();
+  });
+});
+</script>
+</body>
+</html>
