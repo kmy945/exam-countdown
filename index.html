@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>九年級段考倒數｜投影版</title>
+
+<style>
+  body{
+    font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;
+    background:#ffffff;
+    margin:0;
+    padding:24px;
+  }
+  .wrap{
+    max-width:1200px;
+    margin:0 auto;
+    text-align:center;
+  }
+  h1{
+    font-size:48px;
+    margin:0 0 10px;
+  }
+  h2{
+    font-size:36px;
+    margin:0 0 24px;
+  }
+
+  /* 分頁 */
+  .tabs{
+    display:flex;
+    justify-content:center;
+    gap:24px;
+    margin-bottom:28px;
+  }
+  .tab{
+    font-size:28px;
+    padding:14px 26px;
+    border:3px solid #000;
+    border-radius:999px;
+    cursor:pointer;
+  }
+  .tab.active{
+    background:#000;
+    color:#fff;
+  }
+
+  /* 倒數卡片 */
+  .item{
+    border:4px solid #000;
+    border-radius:20px;
+    padding:28px;
+    margin-bottom:24px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .subject{
+    font-size:56px;
+    font-weight:900;
+  }
+  .time{
+    font-size:56px;
+    font-weight:900;
+    letter-spacing:2px;
+  }
+
+  /* 15 分鐘警示 */
+  .urgent{
+    border-color:#c40000;
+  }
+  .urgent .subject,
+  .urgent .time{
+    color:#c40000;
+  }
+
+  .empty{
+    font-size:40px;
+    margin-top:60px;
+  }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>茄萣國中 九年級</h1>
+  <h2 id="title">1/15（四）段考倒數</h2>
+
+  <div class="tabs">
+    <div class="tab active" data-day="day1">1/15（四）</div>
+    <div class="tab" data-day="day2">1/16（五）</div>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<script>
+const URGENT = 15 * 60 * 1000;
+
+// 🟢 可調整考試時間
+const day1 = [
+  { s:"作文", t:"2026-01-15T08:20:00+08:00" },
+  { s:"自然", t:"2026-01-15T09:15:00+08:00" },
+  { s:"英語", t:"2026-01-15T11:05:00+08:00" },
+  { s:"國文", t:"2026-01-15T14:15:00+08:00" },
+  { s:"英聽", t:"2026-01-15T15:15:00+08:00" }
+];
+const day2 = [
+  { s:"數學", t:"2026-01-16T08:40:00+08:00" },
+  { s:"社會", t:"2026-01-16T11:05:00+08:00" },
+  { s:"健康教育", t:"2026-01-16T13:20:00+08:00" }
+];
+
+const schedules = { day1, day2 };
+let current = "day1";
+
+const list = document.getElementById("list");
+const title = document.getElementById("title");
+
+function pad(n){ return String(n).padStart(2,"0"); }
+function format(ms){
+  const s = Math.floor(ms/1000);
+  const d = Math.floor(s/86400);
+  const h = Math.floor(s%86400/3600);
+  const m = Math.floor(s%3600/60);
+  const sec = s%60;
+  return `${d}天 ${pad(h)}:${pad(m)}:${pad(sec)}`;
+}
+
+function render(){
+  const now = Date.now();
+  list.innerHTML = "";
+
+  const items = schedules[current]
+    .map(i=>({...i, ms:new Date(i.t)-now}))
+    .filter(i=>i.ms>0);
+
+  if(items.length===0){
+    list.innerHTML = `<div class="empty">今天考試已全部開始／結束</div>`;
+    return;
+  }
+
+  items.forEach(i=>{
+    const div=document.createElement("div");
+    div.className="item"+(i.ms<=URGENT?" urgent":"");
+    div.innerHTML=`
+      <div class="subject">${i.ms<=URGENT?"⚠️ ":""}${i.s}</div>
+      <div class="time">${format(i.ms)}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+render();
+setInterval(render,1000);
+
+// 分頁切換
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    tab.classList.add("active");
+    current = tab.dataset.day;
+    title.textContent = tab.textContent + " 段考倒數";
+    render();
+  });
+});
+</script>
+</body>
+</html>
